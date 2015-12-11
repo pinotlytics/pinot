@@ -166,98 +166,104 @@ public class RealtimeSegmentImpl implements RealtimeSegment {
     // updating dictionary for dimensions only
     // its ok to insert this first
     // since filtering won't return back anything unless a new entry is made in the inverted index
-    for (String dimension : dataSchema.getDimensionNames()) {
-      dictionaryMap.get(dimension).index(row.getValue(dimension));
-      if (!dataSchema.getFieldSpecFor(dimension).isSingleValueField()) {
-        Object[] entries = (Object[]) row.getValue(dimension);
-        if ((entries != null) && (maxNumberOfMultivaluesMap.get(dimension) < entries.length)) {
-          maxNumberOfMultivaluesMap.put(dimension, entries.length);
+    try {
+      for (String dimension : dataSchema.getDimensionNames()) {
+        dictionaryMap.get(dimension).index(row.getValue(dimension));
+        if (!dataSchema.getFieldSpecFor(dimension).isSingleValueField()) {
+          Object[] entries = (Object[]) row.getValue(dimension);
+          if ((entries != null) && (maxNumberOfMultivaluesMap.get(dimension) < entries.length)) {
+            maxNumberOfMultivaluesMap.put(dimension, entries.length);
+          }
         }
       }
-    }
-
-    for (String metric : dataSchema.getMetricNames()) {
-      dictionaryMap.get(metric).index(row.getValue(metric));
-    }
-
-    // convert time granularity and add the time value to dictionary
-    Object timeValueObj = timeConverter.convert(row.getValue(incomingTimeColumnName));
-
-    long timeValue = -1;
-    if (timeValueObj instanceof Integer) {
-      timeValue = ((Integer) timeValueObj).longValue();
-    } else {
-      timeValue = (Long) timeValueObj;
-    }
-
-    dictionaryMap.get(outgoingTimeColumnName).index(timeValueObj);
-
-    // update the min max time values
-    minTimeVal = Math.min(minTimeVal, timeValue);
-    maxTimeVal = Math.max(maxTimeVal, timeValue);
-
-    // also lets collect all dicIds to update inverted index later
-    Map<String, Object> rawRowToDicIdMap = new HashMap<String, Object>();
-
-    // lets update forward index now
-    int docId = docIdGenerator.incrementAndGet();
-
-    for (String dimension : dataSchema.getDimensionNames()) {
-      if (dataSchema.getFieldSpecFor(dimension).isSingleValueField()) {
-        int dicId = dictionaryMap.get(dimension).indexOf(row.getValue(dimension));
-        ((FixedByteSingleColumnSingleValueReaderWriter) columnIndexReaderWriterMap.get(dimension)).setInt(docId, dicId);
-        rawRowToDicIdMap.put(dimension, dicId);
+  
+      for (String metric : dataSchema.getMetricNames()) {
+        dictionaryMap.get(metric).index(row.getValue(metric));
+      }
+  
+      // convert time granularity and add the time value to dictionary
+      Object timeValueObj = timeConverter.convert(row.getValue(incomingTimeColumnName));
+  
+      long timeValue = -1;
+      if (timeValueObj instanceof Integer) {
+        timeValue = ((Integer) timeValueObj).longValue();
       } else {
-        Object[] mValues = (Object[]) row.getValue(dimension);
-        int[] dicIds = new int[mValues.length];
-        for (int i = 0; i < dicIds.length; i++) {
-          dicIds[i] = dictionaryMap.get(dimension).indexOf(mValues[i]);
-        }
-        ((FixedByteSingleColumnMultiValueReaderWriter) columnIndexReaderWriterMap.get(dimension)).setIntArray(docId,
-            dicIds);
-        rawRowToDicIdMap.put(dimension, dicIds);
+        timeValue = (Long) timeValueObj;
       }
-    }
-
-    for (String metric : dataSchema.getMetricNames()) {
-      FixedByteSingleColumnSingleValueReaderWriter readerWriter =
-          (FixedByteSingleColumnSingleValueReaderWriter) columnIndexReaderWriterMap.get(metric);
-      int dicId = dictionaryMap.get(metric).indexOf(row.getValue(metric));
-      readerWriter.setInt(docId, dicId);
-      rawRowToDicIdMap.put(metric, dicId);
-    }
-
-    int timeDicId = dictionaryMap.get(outgoingTimeColumnName).indexOf(timeValueObj);
-
-    ((FixedByteSingleColumnSingleValueReaderWriter) columnIndexReaderWriterMap.get(outgoingTimeColumnName)).setInt(
-        docId, timeDicId);
-    rawRowToDicIdMap.put(outgoingTimeColumnName, timeDicId);
-
-    // lets update the inverted index now
-    // metrics
-    for (String metric : dataSchema.getMetricNames()) {
-      invertedIndexMap.get(metric).add(rawRowToDicIdMap.get(metric), docId);
-    }
-
-    //dimension
-    for (String dimension : dataSchema.getDimensionNames()) {
-      if (dataSchema.getFieldSpecFor(dimension).isSingleValueField()) {
-        invertedIndexMap.get(dimension).add(rawRowToDicIdMap.get(dimension), docId);
-      } else {
-        int[] dicIds = (int[]) rawRowToDicIdMap.get(dimension);
-        for (int dicId : dicIds) {
-          invertedIndexMap.get(dimension).add(dicId, docId);
+  
+      dictionaryMap.get(outgoingTimeColumnName).index(timeValueObj);
+  
+      // update the min max time values
+      minTimeVal = Math.min(minTimeVal, timeValue);
+      maxTimeVal = Math.max(maxTimeVal, timeValue);
+  
+      // also lets collect all dicIds to update inverted index later
+      Map<String, Object> rawRowToDicIdMap = new HashMap<String, Object>();
+  
+      // lets update forward index now
+      int docId = docIdGenerator.incrementAndGet();
+  
+      for (String dimension : dataSchema.getDimensionNames()) {
+        if (dataSchema.getFieldSpecFor(dimension).isSingleValueField()) {
+          int dicId = dictionaryMap.get(dimension).indexOf(row.getValue(dimension));
+          ((FixedByteSingleColumnSingleValueReaderWriter) columnIndexReaderWriterMap.get(dimension)).setInt(docId, dicId);
+          rawRowToDicIdMap.put(dimension, dicId);
+        } else {
+          Object[] mValues = (Object[]) row.getValue(dimension);
+          int[] dicIds = new int[mValues.length];
+          for (int i = 0; i < dicIds.length; i++) {
+            dicIds[i] = dictionaryMap.get(dimension).indexOf(mValues[i]);
+          }
+          ((FixedByteSingleColumnMultiValueReaderWriter) columnIndexReaderWriterMap.get(dimension)).setIntArray(docId,
+              dicIds);
+          rawRowToDicIdMap.put(dimension, dicIds);
         }
       }
+  
+      for (String metric : dataSchema.getMetricNames()) {
+        FixedByteSingleColumnSingleValueReaderWriter readerWriter =
+            (FixedByteSingleColumnSingleValueReaderWriter) columnIndexReaderWriterMap.get(metric);
+        int dicId = dictionaryMap.get(metric).indexOf(row.getValue(metric));
+        readerWriter.setInt(docId, dicId);
+        rawRowToDicIdMap.put(metric, dicId);
+      }
+  
+      int timeDicId = dictionaryMap.get(outgoingTimeColumnName).indexOf(timeValueObj);
+  
+      ((FixedByteSingleColumnSingleValueReaderWriter) columnIndexReaderWriterMap.get(outgoingTimeColumnName)).setInt(
+          docId, timeDicId);
+      rawRowToDicIdMap.put(outgoingTimeColumnName, timeDicId);
+  
+      // lets update the inverted index now
+      // metrics
+      for (String metric : dataSchema.getMetricNames()) {
+        invertedIndexMap.get(metric).add(rawRowToDicIdMap.get(metric), docId);
+      }
+  
+      //dimension
+      for (String dimension : dataSchema.getDimensionNames()) {
+        if (dataSchema.getFieldSpecFor(dimension).isSingleValueField()) {
+          invertedIndexMap.get(dimension).add(rawRowToDicIdMap.get(dimension), docId);
+        } else {
+          int[] dicIds = (int[]) rawRowToDicIdMap.get(dimension);
+          for (int dicId : dicIds) {
+            invertedIndexMap.get(dimension).add(dicId, docId);
+          }
+        }
+      }
+      //time
+      invertedIndexMap.get(outgoingTimeColumnName).add(rawRowToDicIdMap.get(outgoingTimeColumnName), docId);
+  
+      docIdSearchableOffset = docId;
+      numDocsIndexed += 1;
+      numSuccessIndexed += 1;
+  
+      return numDocsIndexed < capacity;
+
+    } catch (Exception e) {
+      LOGGER.warn("Failed to index msg {} with exception {}", row.toString(), e);
+      return true;
     }
-    //time
-    invertedIndexMap.get(outgoingTimeColumnName).add(rawRowToDicIdMap.get(outgoingTimeColumnName), docId);
-
-    docIdSearchableOffset = docId;
-    numDocsIndexed += 1;
-    numSuccessIndexed += 1;
-
-    return numDocsIndexed < capacity;
   }
 
   @Override
