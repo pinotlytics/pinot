@@ -196,6 +196,7 @@ public abstract class FieldSpec {
     LONG,
     FLOAT,
     DOUBLE,
+    ISO8601_STRING,
     STRING,
     OBJECT,
     //EVERYTHING AFTER THIS MUST BE ARRAY TYPE
@@ -328,6 +329,7 @@ public abstract class FieldSpec {
           case DOUBLE_ARRAY:
             return DEFAULT_DIM_NULL_VALUE_OF_DOUBLE;
           case STRING:
+          case ISO8601_STRING:
           case STRING_ARRAY:
             return DEFAULT_DIM_NULL_VALUE_OF_STRING;
           default:
