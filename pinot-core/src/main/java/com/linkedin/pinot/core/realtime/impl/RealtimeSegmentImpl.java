@@ -15,8 +15,9 @@
  */
 package com.linkedin.pinot.core.realtime.impl;
 
-import com.linkedin.pinot.core.indexsegment.IndexSegment;
 import java.io.IOException;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -26,8 +27,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import com.linkedin.pinot.core.indexsegment.IndexSegment;
-import com.linkedin.pinot.core.startree.StarTreeIndexNode;
 import org.joda.time.DateTime;
 import org.joda.time.Interval;
 import org.roaringbitmap.IntIterator;
@@ -59,6 +58,7 @@ import com.linkedin.pinot.core.realtime.impl.invertedIndex.RealtimeInvertedIndex
 import com.linkedin.pinot.core.realtime.impl.invertedIndex.TimeInvertedIndex;
 import com.linkedin.pinot.core.segment.creator.impl.V1Constants;
 import com.linkedin.pinot.core.segment.index.SegmentMetadataImpl;
+import com.linkedin.pinot.core.startree.StarTreeIndexNode;
 
 
 public class RealtimeSegmentImpl implements RealtimeSegment {
@@ -261,7 +261,9 @@ public class RealtimeSegmentImpl implements RealtimeSegment {
       return numDocsIndexed < capacity;
 
     } catch (Exception e) {
-      LOGGER.warn("Failed to index msg {} with exception {}", row.toString(), e);
+      StringWriter stack = new StringWriter();
+      e.printStackTrace(new PrintWriter(stack)); 
+      LOGGER.warn("Failed to index msg {} with exception {}", row.toString(), stack.toString());
       return true;
     }
   }
