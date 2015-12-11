@@ -329,6 +329,7 @@ public abstract class FieldSpec {
           case DOUBLE_ARRAY:
             return DEFAULT_DIM_NULL_VALUE_OF_DOUBLE;
           case STRING:
+          case BOOLEAN:
           case ISO8601_STRING:
           case STRING_ARRAY:
             return DEFAULT_DIM_NULL_VALUE_OF_STRING;
