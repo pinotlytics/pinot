@@ -60,7 +60,6 @@ import com.linkedin.pinot.core.segment.creator.impl.V1Constants;
 import com.linkedin.pinot.core.segment.index.SegmentMetadataImpl;
 import com.linkedin.pinot.core.startree.StarTreeIndexNode;
 
-
 public class RealtimeSegmentImpl implements RealtimeSegment {
   private static final Logger LOGGER = LoggerFactory.getLogger(RealtimeSegmentImpl.class);
 
@@ -176,38 +175,43 @@ public class RealtimeSegmentImpl implements RealtimeSegment {
           }
         }
       }
-  
+      LOGGER.debug("Done Dimenstions dict indexing");
       for (String metric : dataSchema.getMetricNames()) {
         dictionaryMap.get(metric).index(row.getValue(metric));
       }
-  
+      LOGGER.debug("Done Metrics dict indexing");
       // convert time granularity and add the time value to dictionary
       Object timeValueObj = timeConverter.convert(row.getValue(incomingTimeColumnName));
-  
+
+      LOGGER.debug("Done TimeStamp dict Converter: {}", timeValueObj);
       long timeValue = -1;
       if (timeValueObj instanceof Integer) {
         timeValue = ((Integer) timeValueObj).longValue();
       } else {
         timeValue = (Long) timeValueObj;
       }
-  
+
       dictionaryMap.get(outgoingTimeColumnName).index(timeValueObj);
-  
+      LOGGER.debug("Done TimeStamp indexing");
       // update the min max time values
       minTimeVal = Math.min(minTimeVal, timeValue);
       maxTimeVal = Math.max(maxTimeVal, timeValue);
-  
+
       // also lets collect all dicIds to update inverted index later
       Map<String, Object> rawRowToDicIdMap = new HashMap<String, Object>();
-  
+
       // lets update forward index now
       int docId = docIdGenerator.incrementAndGet();
-  
+
       for (String dimension : dataSchema.getDimensionNames()) {
+        LOGGER.debug("Trying to index column: {}", dimension);
         if (dataSchema.getFieldSpecFor(dimension).isSingleValueField()) {
           int dicId = dictionaryMap.get(dimension).indexOf(row.getValue(dimension));
+          LOGGER.debug("Got dicId: {} for value: {} in index column: {}", dicId, row.getValue(dimension), dimension);
           ((FixedByteSingleColumnSingleValueReaderWriter) columnIndexReaderWriterMap.get(dimension)).setInt(docId, dicId);
+          LOGGER.debug("columnIndexReaderWriterMap set docId: {} and dictId: {} in index column: {}", docId, dicId, dimension);
           rawRowToDicIdMap.put(dimension, dicId);
+          LOGGER.debug("rawRowToDicIdMap.put({},{}) ", dimension, dicId);
         } else {
           Object[] mValues = (Object[]) row.getValue(dimension);
           int[] dicIds = new int[mValues.length];
@@ -219,7 +223,8 @@ public class RealtimeSegmentImpl implements RealtimeSegment {
           rawRowToDicIdMap.put(dimension, dicIds);
         }
       }
-  
+
+      LOGGER.debug("Done Dimenstions fwd indexing");
       for (String metric : dataSchema.getMetricNames()) {
         FixedByteSingleColumnSingleValueReaderWriter readerWriter =
             (FixedByteSingleColumnSingleValueReaderWriter) columnIndexReaderWriterMap.get(metric);
@@ -227,20 +232,23 @@ public class RealtimeSegmentImpl implements RealtimeSegment {
         readerWriter.setInt(docId, dicId);
         rawRowToDicIdMap.put(metric, dicId);
       }
-  
+
+      LOGGER.debug("Done metrics fwd indexing");
       int timeDicId = dictionaryMap.get(outgoingTimeColumnName).indexOf(timeValueObj);
-  
+
       ((FixedByteSingleColumnSingleValueReaderWriter) columnIndexReaderWriterMap.get(outgoingTimeColumnName)).setInt(
           docId, timeDicId);
       rawRowToDicIdMap.put(outgoingTimeColumnName, timeDicId);
-  
+
+      LOGGER.debug("Done metrics time fwd indexing");
       // lets update the inverted index now
       // metrics
       for (String metric : dataSchema.getMetricNames()) {
         invertedIndexMap.get(metric).add(rawRowToDicIdMap.get(metric), docId);
       }
-  
-      //dimension
+
+      LOGGER.debug("Done metric inv indexing");
+      // dimension
       for (String dimension : dataSchema.getDimensionNames()) {
         if (dataSchema.getFieldSpecFor(dimension).isSingleValueField()) {
           invertedIndexMap.get(dimension).add(rawRowToDicIdMap.get(dimension), docId);
@@ -251,18 +259,22 @@ public class RealtimeSegmentImpl implements RealtimeSegment {
           }
         }
       }
-      //time
+
+      LOGGER.debug("Done Dimenstions inv indexing");
+      // time
       invertedIndexMap.get(outgoingTimeColumnName).add(rawRowToDicIdMap.get(outgoingTimeColumnName), docId);
-  
+
+      LOGGER.debug("Done time inv indexing");
       docIdSearchableOffset = docId;
       numDocsIndexed += 1;
       numSuccessIndexed += 1;
-  
+      LOGGER.debug("Current numDocsIndexed={}, capacity={}", numDocsIndexed, capacity);
       return numDocsIndexed < capacity;
 
     } catch (Exception e) {
+      LOGGER.error("Failed to index msg with exception:", e);
       StringWriter stack = new StringWriter();
-      e.printStackTrace(new PrintWriter(stack)); 
+      e.printStackTrace(new PrintWriter(stack));
       LOGGER.warn("Failed to index msg {} with exception {}", row.toString(), stack.toString());
       return true;
     }
@@ -354,7 +366,7 @@ public class RealtimeSegmentImpl implements RealtimeSegment {
         dfReader.close();
       } catch (IOException e) {
         LOGGER.error("Failed to close index. Service will continue with potential memory leak, error: ", e);
-        //fall through to close other segments
+        // fall through to close other segments
       }
     }
     // clear map now that index is closed to prevent accidental usage
