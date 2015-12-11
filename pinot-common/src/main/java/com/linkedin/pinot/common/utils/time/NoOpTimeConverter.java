@@ -41,6 +41,8 @@ public class NoOpTimeConverter implements TimeConverter {
     long incoming = -1;
     if (o instanceof Integer) {
       incoming = ((Integer) o).longValue();
+    } else {
+      incoming = (Long) o;
     }
     switch (incomingTimeGranularitySpec.getTimeType()) {
       case HOURS:
