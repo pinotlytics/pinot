@@ -29,7 +29,6 @@ import com.linkedin.pinot.core.data.GenericRow;
 import com.linkedin.pinot.core.segment.creator.AbstractColumnStatisticsCollector;
 import com.linkedin.pinot.core.segment.creator.SegmentPreIndexStatsCollector;
 
-
 /**
  * Nov 7, 2014
  */
@@ -51,8 +50,12 @@ public class SegmentPreIndexStatsCollectorImpl implements SegmentPreIndexStatsCo
     for (final FieldSpec spec : dataSchema.getAllFieldSpecs()) {
       DataType dataType = spec.getDataType();
       String specName = spec.getName();
+      LOGGER.debug("FieldSpec {} : {}", specName, spec);
       if (spec instanceof TimeFieldSpec) {
         TimeFieldSpec timeFieldSpec = (TimeFieldSpec) spec;
+        LOGGER.debug("TimeFieldSpec {} : {}", specName, timeFieldSpec);
+        LOGGER.debug("Incoming TimeFieldSpec {} : {}", timeFieldSpec.getIncomingTimeColumnName(), timeFieldSpec.getIncomingGranularitySpec());
+        LOGGER.debug("Outgoing TimeFieldSpec {} : {}", timeFieldSpec.getOutGoingTimeColumnName(), timeFieldSpec.getOutgoingGranularitySpec());
         specName = timeFieldSpec.getOutGoingTimeColumnName();
         dataType = timeFieldSpec.getOutgoingGranularitySpec().getDataType();
       }
@@ -60,21 +63,26 @@ public class SegmentPreIndexStatsCollectorImpl implements SegmentPreIndexStatsCo
         case BOOLEAN:
         case STRING:
           columnStatsCollectorMap.put(specName, new StringColumnPreIndexStatsCollector(spec));
+          LOGGER.debug("Init StringColumnPreIndexStatsCollector for column: {}", specName);
           break;
         case INT:
           columnStatsCollectorMap.put(specName, new IntColumnPreIndexStatsCollector(spec));
+          LOGGER.debug("Init IntColumnPreIndexStatsCollector for column: {}", specName);
           break;
         case LONG:
           columnStatsCollectorMap.put(specName, new LongColumnPreIndexStatsCollector(spec));
+          LOGGER.debug("Init LongColumnPreIndexStatsCollector for column: {}", specName);
           break;
         case FLOAT:
           columnStatsCollectorMap.put(specName, new FloatColumnPreIndexStatsCollector(spec));
+          LOGGER.debug("Init FloatColumnPreIndexStatsCollector for column: {}", specName);
           break;
         case DOUBLE:
           columnStatsCollectorMap.put(specName, new DoubleColumnPreIndexStatsCollector(spec));
+          LOGGER.debug("Init DoubleColumnPreIndexStatsCollector for column: {}", specName);
           break;
         default:
-          LOGGER.warn("Failed to initialize FieldSpec: {}", spec);
+          LOGGER.warn("Failed to initialize column: {}, FieldSpec: {}", specName, spec);
           break;
       }
     }
@@ -95,6 +103,7 @@ public class SegmentPreIndexStatsCollectorImpl implements SegmentPreIndexStatsCo
   @Override
   public void collectRow(GenericRow row) throws Exception {
     for (final String column : row.getFieldNames()) {
+      LOGGER.debug("Trying to collectRow: Column: {}, with value: {}", column, row.getValue(column));
       columnStatsCollectorMap.get(column).collect(row.getValue(column));
     }
   }
