@@ -19,24 +19,22 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
 
-import kafka.consumer.ConsumerConfig;
-
 import com.linkedin.pinot.common.config.AbstractTableConfig;
 import com.linkedin.pinot.common.data.Schema;
 import com.linkedin.pinot.common.metadata.instance.InstanceZKMetadata;
 import com.linkedin.pinot.common.metadata.stream.KafkaStreamMetadata;
 import com.linkedin.pinot.common.utils.CommonConstants.Helix;
-import com.linkedin.pinot.core.data.manager.realtime.RealtimeSegmentDataManager;
 import com.linkedin.pinot.core.realtime.StreamProviderConfig;
 
+import kafka.consumer.ConsumerConfig;
 
 public class KafkaHighLevelStreamProviderConfig implements StreamProviderConfig {
   private static final Map<String, String> defaultProps;
-  
+
   public static final int FIVE_MILLION = 5000000;
   private final static long ONE_MINUTE_IN_MILLSEC = 1000 * 60;
   public static final long ONE_HOUR = ONE_MINUTE_IN_MILLSEC * 60;
-  
+
   static {
     defaultProps = new HashMap<String, String>();
     /*defaultProps.put("zookeeper.connect", zookeeper);
@@ -55,6 +53,7 @@ public class KafkaHighLevelStreamProviderConfig implements StreamProviderConfig 
   private Schema indexingSchema;
   private Map<String, String> decoderProps;
   private Map<String, String> kafkaConsumerProps;
+  private Map<String, String> consumerProps;
   private long segmentTimeInMillis = ONE_HOUR;
   private int realtimeRecordsThreshold = FIVE_MILLION;
 
@@ -70,7 +69,7 @@ public class KafkaHighLevelStreamProviderConfig implements StreamProviderConfig 
   public void init(Map<String, String> properties, Schema schema) {
     decoderProps = new HashMap<String, String>();
     kafkaConsumerProps = new HashMap<>();
-
+    consumerProps = new HashMap<String, String>(defaultProps);
     this.indexingSchema = schema;
     if (properties.containsKey(Helix.DataSource.Realtime.Kafka.HighLevelConsumer.GROUP_ID)) {
       this.groupId = properties.get(Helix.DataSource.Realtime.Kafka.HighLevelConsumer.GROUP_ID);
@@ -101,6 +100,11 @@ public class KafkaHighLevelStreamProviderConfig implements StreamProviderConfig 
     if (properties.containsKey(Helix.DataSource.Realtime.REALTIME_SEGMENT_FLUSH_TIME)) {
       segmentTimeInMillis =
           Long.parseLong(properties.get(Helix.DataSource.Realtime.REALTIME_SEGMENT_FLUSH_TIME));
+    }
+
+    if (properties.containsKey(Helix.DataSource.Realtime.Kafka.HighLevelConsumer.AUTO_OFFSET_RESET)) {
+      String autoOffsetRest = properties.get(Helix.DataSource.Realtime.Kafka.HighLevelConsumer.AUTO_OFFSET_RESET);
+      consumerProps.put("auto.offset.reset", autoOffsetRest);
     }
 
     for (String key : properties.keySet()) {
@@ -169,12 +173,12 @@ public class KafkaHighLevelStreamProviderConfig implements StreamProviderConfig 
       realtimeRecordsThreshold =
           Integer.parseInt(tableConfig.getIndexingConfig().getStreamConfigs().get(Helix.DataSource.Realtime.REALTIME_SEGMENT_FLUSH_SIZE));
     }
-    
+
     if (tableConfig.getIndexingConfig().getStreamConfigs().containsKey(Helix.DataSource.Realtime.REALTIME_SEGMENT_FLUSH_TIME)) {
       segmentTimeInMillis =
           Long.parseLong(tableConfig.getIndexingConfig().getStreamConfigs().get(Helix.DataSource.Realtime.REALTIME_SEGMENT_FLUSH_TIME));
     }
-    
+
   }
 
   @Override

@@ -123,6 +123,7 @@ public class CommonConstants {
           public static class HighLevelConsumer {
             public static final String ZK_CONNECTION_STRING = "kafka.hlc.zk.connect.string";
             public static final String GROUP_ID = "kafka.hlc.group.id";
+            public static final String AUTO_OFFSET_RESET = "kafka.hlc.auto.offset.reset";
           }
         }
       }
