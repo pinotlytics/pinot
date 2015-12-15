@@ -22,7 +22,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.linkedin.pinot.common.data.FieldSpec;
+import com.linkedin.pinot.common.data.FieldSpec.DataType;
 import com.linkedin.pinot.common.data.Schema;
+import com.linkedin.pinot.common.data.TimeFieldSpec;
 import com.linkedin.pinot.core.data.GenericRow;
 import com.linkedin.pinot.core.segment.creator.AbstractColumnStatisticsCollector;
 import com.linkedin.pinot.core.segment.creator.SegmentPreIndexStatsCollector;
@@ -47,24 +49,32 @@ public class SegmentPreIndexStatsCollectorImpl implements SegmentPreIndexStatsCo
     columnStatsCollectorMap = new HashMap<String, AbstractColumnStatisticsCollector>();
 
     for (final FieldSpec spec : dataSchema.getAllFieldSpecs()) {
-      switch (spec.getDataType()) {
+      DataType dataType = spec.getDataType();
+      String specName = spec.getName();
+      if (spec instanceof TimeFieldSpec) {
+        TimeFieldSpec timeFieldSpec = (TimeFieldSpec) spec;
+        specName = timeFieldSpec.getOutGoingTimeColumnName();
+        dataType = timeFieldSpec.getOutgoingGranularitySpec().getDataType();
+      }
+      switch (dataType) {
         case BOOLEAN:
         case STRING:
-          columnStatsCollectorMap.put(spec.getName(), new StringColumnPreIndexStatsCollector(spec));
+          columnStatsCollectorMap.put(specName, new StringColumnPreIndexStatsCollector(spec));
           break;
         case INT:
-          columnStatsCollectorMap.put(spec.getName(), new IntColumnPreIndexStatsCollector(spec));
+          columnStatsCollectorMap.put(specName, new IntColumnPreIndexStatsCollector(spec));
           break;
         case LONG:
-          columnStatsCollectorMap.put(spec.getName(), new LongColumnPreIndexStatsCollector(spec));
+          columnStatsCollectorMap.put(specName, new LongColumnPreIndexStatsCollector(spec));
           break;
         case FLOAT:
-          columnStatsCollectorMap.put(spec.getName(), new FloatColumnPreIndexStatsCollector(spec));
+          columnStatsCollectorMap.put(specName, new FloatColumnPreIndexStatsCollector(spec));
           break;
         case DOUBLE:
-          columnStatsCollectorMap.put(spec.getName(), new DoubleColumnPreIndexStatsCollector(spec));
+          columnStatsCollectorMap.put(specName, new DoubleColumnPreIndexStatsCollector(spec));
           break;
         default:
+          LOGGER.warn("Failed to initialize FieldSpec: {}", spec);
           break;
       }
     }
