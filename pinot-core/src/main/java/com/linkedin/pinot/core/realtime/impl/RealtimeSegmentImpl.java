@@ -267,7 +267,7 @@ public class RealtimeSegmentImpl implements RealtimeSegment {
       LOGGER.error("Failed to index msg with exception:", e);
       StringWriter stack = new StringWriter();
       e.printStackTrace(new PrintWriter(stack));
-      LOGGER.warn("Failed to index msg {} with exception {}", row.toString(), stack.toString());
+      LOGGER.warn("Failed to index msg: {} with exception: {}", row.toString(), stack.toString());
       return true;
     }
   }
