@@ -26,7 +26,6 @@ import com.linkedin.pinot.core.indexsegment.generator.SegmentVersion;
 import com.linkedin.pinot.core.realtime.impl.RealtimeSegmentImpl;
 import com.linkedin.pinot.core.segment.creator.impl.SegmentIndexCreationDriverImpl;
 
-
 public class RealtimeSegmentConverter {
 
   private RealtimeSegmentImpl realtimeSegmentImpl;
@@ -45,11 +44,6 @@ public class RealtimeSegmentConverter {
     }
     this.tableName = tableName;
     this.segmentName = segmentName;
-    TimeFieldSpec original = schema.getTimeFieldSpec();
-    TimeGranularitySpec incoming = original.getIncomingGranularitySpec();
-    // incoming.setDataType(DataType.LONG);
-
-    TimeFieldSpec newTimeSpec = new TimeFieldSpec(incoming);
 
     Schema newSchema = new Schema();
     for (String dimension : schema.getDimensionNames()) {
@@ -59,7 +53,8 @@ public class RealtimeSegmentConverter {
       newSchema.addSchema(metic, schema.getFieldSpecFor(metic));
     }
 
-    newSchema.addSchema(newTimeSpec.getName(), newTimeSpec);
+    TimeFieldSpec original = schema.getTimeFieldSpec();
+    newSchema.addSchema(original.getName(), original);
     this.dataSchema = newSchema;
     this.sortedColumn = sortedColumn;
   }
