@@ -162,6 +162,9 @@ public class RealtimeSegmentImpl implements RealtimeSegment {
 
   @Override
   public boolean index(GenericRow row) {
+    if (row == null) {
+      return true;
+    }
     // updating dictionary for dimensions only
     // its ok to insert this first
     // since filtering won't return back anything unless a new entry is made in the inverted index
