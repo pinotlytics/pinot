@@ -20,6 +20,7 @@ import java.util.Map;
 
 import kafka.consumer.ConsumerConfig;
 import kafka.consumer.ConsumerIterator;
+import kafka.consumer.ConsumerTimeoutException;
 import kafka.consumer.KafkaStream;
 import kafka.javaapi.consumer.ConsumerConnector;
 
@@ -75,15 +76,21 @@ public class KafkaHighLevelConsumerStreamProvider implements StreamProvider {
 
   @Override
   public GenericRow next() {
-    if (kafkaIterator.hasNext()) {
-      try {
-        GenericRow row = decoder.decode(kafkaIterator.next().message());
-        kafkaEventsConsumedCount.inc();
-        return row;
-      } catch (Exception e) {
-        LOGGER.warn("Caught exception while consuming events", e);
-        kafkaEventsFailedCount.inc();
+    try {
+      if (kafkaIterator.hasNext()) {
+        try {
+          GenericRow row = decoder.decode(kafkaIterator.next().message());
+          kafkaEventsConsumedCount.inc();
+          return row;
+        } catch (Exception e) {
+          LOGGER.warn("Caught exception while consuming events", e);
+          kafkaEventsFailedCount.inc();
+        }
       }
+    } catch (ConsumerTimeoutException e) {
+      return null;
+    } catch (Exception e) {
+      LOGGER.warn("Caught exception while iterating kafka", e);
     }
     return null;
   }

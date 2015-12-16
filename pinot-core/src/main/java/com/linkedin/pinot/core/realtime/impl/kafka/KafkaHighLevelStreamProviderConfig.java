@@ -41,6 +41,7 @@ public class KafkaHighLevelStreamProviderConfig implements StreamProviderConfig 
     defaultProps.put("group.id", groupId);*/
     defaultProps.put("zookeeper.session.timeout.ms", "30000");
     defaultProps.put("zookeeper.sync.time.ms", "200");
+    defaultProps.put("consumer.timeout.ms", "5000");
     defaultProps.put("auto.commit.enable", "false");
     defaultProps.put("auto.offset.reset", "largest");
   }
@@ -135,8 +136,8 @@ public class KafkaHighLevelStreamProviderConfig implements StreamProviderConfig 
 
   public ConsumerConfig getKafkaConsumerConfig() {
     Properties props = new Properties();
-    for (String key : defaultProps.keySet()) {
-      props.put(key, defaultProps.get(key));
+    for (String key : consumerProps.keySet()) {
+      props.put(key, consumerProps.get(key));
     }
 
     for (String key : kafkaConsumerProps.keySet()) {
@@ -169,6 +170,12 @@ public class KafkaHighLevelStreamProviderConfig implements StreamProviderConfig 
     this.decoderProps = kafkaMetadata.getDecoderProperties();
     this.kafkaConsumerProps = kafkaMetadata.getKafkaConsumerProperties();
     this.zkString = kafkaMetadata.getZkBrokerUrl();
+    this.consumerProps = new HashMap<String, String>(defaultProps);
+
+    if (tableConfig.getIndexingConfig().getStreamConfigs().containsKey(Helix.DataSource.Realtime.Kafka.HighLevelConsumer.AUTO_OFFSET_RESET)) {
+      consumerProps.put("auto.offset.reset",
+          tableConfig.getIndexingConfig().getStreamConfigs().get(Helix.DataSource.Realtime.Kafka.HighLevelConsumer.AUTO_OFFSET_RESET));
+    }
     if (tableConfig.getIndexingConfig().getStreamConfigs().containsKey(Helix.DataSource.Realtime.REALTIME_SEGMENT_FLUSH_SIZE)) {
       realtimeRecordsThreshold =
           Integer.parseInt(tableConfig.getIndexingConfig().getStreamConfigs().get(Helix.DataSource.Realtime.REALTIME_SEGMENT_FLUSH_SIZE));
