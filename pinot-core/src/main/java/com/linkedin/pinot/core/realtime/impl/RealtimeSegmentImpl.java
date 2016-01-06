@@ -187,14 +187,20 @@ public class RealtimeSegmentImpl implements RealtimeSegment {
       Object timeValueObj = timeConverter.convert(row.getValue(incomingTimeColumnName));
 
       // LOGGER.debug("Done TimeStamp dict Converter: {}", timeValueObj);
-      long timeValue = -1;
-      if (timeValueObj instanceof Integer) {
-        timeValue = ((Integer) timeValueObj).longValue();
-      } else {
-        timeValue = (Long) timeValueObj;
+      Long timeValue = new Long(-1);
+      try {
+        if (timeValueObj instanceof Integer) {
+          timeValue = ((Integer) timeValueObj).longValue();
+        } else if (timeValueObj instanceof Long) {
+          timeValue = (Long) timeValueObj;
+        } else {
+          timeValue = Double.valueOf(timeValueObj.toString()).longValue();
+        }
+      } catch (Exception e) {
+        timeValue = Double.valueOf(timeValueObj.toString()).longValue();
       }
 
-      dictionaryMap.get(outgoingTimeColumnName).index(timeValueObj);
+      dictionaryMap.get(outgoingTimeColumnName).index(timeValue);
       // LOGGER.debug("Done TimeStamp indexing");
       // update the min max time values
       minTimeVal = Math.min(minTimeVal, timeValue);
@@ -231,7 +237,7 @@ public class RealtimeSegmentImpl implements RealtimeSegment {
         rawRowToDicIdMap.put(metric, dicId);
       }
 
-      int timeDicId = dictionaryMap.get(outgoingTimeColumnName).indexOf(timeValueObj);
+      int timeDicId = dictionaryMap.get(outgoingTimeColumnName).indexOf(timeValue);
 
       ((FixedByteSingleColumnSingleValueReaderWriter) columnIndexReaderWriterMap.get(outgoingTimeColumnName)).setInt(
           docId, timeDicId);
